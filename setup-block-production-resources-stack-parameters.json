@@ -1,0 +1,6 @@
+[
+  {
+    "ParameterKey": "DemoResourcesCodeCommitRepo",
+    "ParameterValue": "aws-codepipeline-block-production"
+  }
+]

@@ -1,0 +1,10 @@
+{
+  "Parameters" : {
+    "KeyName" : "<Amazon EC2 key pair>",
+    "AppName" : "<Specify an application name. For e.g. BlockProduction.>",
+    "DemoResourcesCodeCommitRepo" : "aws-codepipeline-block-production",
+    "DemoResourcesCodeCommitRepoBranch" : "master",
+    "CanaryApprovalConfiguration": "{\"timeoutMinutes\" : 20,\"metricsRequired\" : 5}",
+    "YourIP" : "IP address to connect to SSH from. Check http://checkip.amazonaws.com/ to find yours."
+  }
+}
