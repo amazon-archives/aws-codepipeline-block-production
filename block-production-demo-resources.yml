@@ -11,7 +11,7 @@ Parameters:
   MinLength: 2
   MaxLength: 30
   Default: "BlockProduction"
-  ConstraintDescription: "Must be between 2 and 15 characters long, lowercase and may contain alphanumeric characters, hyphens (-), and dots (.), but must start with alphanumeric."
+  ConstraintDescription: "Must be between 2 and 30 characters long, lowercase and may contain alphanumeric characters, hyphens (-), and dots (.), but must start with alphanumeric."
  DemoResourcesCodeCommitRepo:
   Type: String
   Default: "aws-codepipeline-block-production"
@@ -181,7 +181,9 @@ Resources:
      - Effect: Allow
        Action:
         - "s3:GetObject"
-       Resource: "*"
+       Resource:
+        - "Fn::Join": ["", ["arn:aws:s3:::", {"Ref": "ArtifactStoreBucket"}, "/*" ]]
+        - "Fn::Join": ["", ["arn:aws:s3:::aws-codedeploy-", {"Ref": "AWS::Region"}, "/*" ]]
    Roles:
     - Ref: WebAppRole
 
@@ -213,30 +215,26 @@ Resources:
     Ref: WebAppInstanceProfile
    ImageId:
     "Fn::FindInMap": [ "AWSRegionVirt2HVMAMI", { "Ref": "AWS::Region" }, "HVM" ]
-   InstanceType: "t1.micro"
+   InstanceType: "t2.micro"
    KeyName:
     Ref: KeyName
    SecurityGroups:
     - Ref: WebAppSG
    UserData:
-    "Fn::Base64": {
-      "Fn::Join": [
-        "",
-        [
-          "#!/bin/bash -ex\n",
-          "yum install -y aws-cli\n",
+    "Fn::Base64":
+      "Fn::Join":
+        - ""
+        - [
+          "#!/bin/bash -xe\n",
+
+          "/usr/bin/yum -y update\n",
+          "/usr/bin/yum install -y ruby\n",
+          "/usr/bin/yum install -y aws-cli\n",
           "cd /home/ec2-user/\n",
-          "wget https://aws-codedeploy-",
-          {
-            "Ref": "AWS::Region"
-          },
-          ".s3.amazonaws.com/latest/codedeploy-agent.noarch.rpm\n",
-          "yum -y install codedeploy-agent.noarch.rpm\n",
-          "service codedeploy-agent start\n",
-          "\n"
-        ]
-      ]
-    }
+          "/usr/bin/aws s3 cp s3://aws-codedeploy-", { "Ref" : "AWS::Region" }, "/latest/install . --region ", { "Ref" : "AWS::Region" }, "\n",
+          "/bin/chmod +x ./install\n",
+          "./install auto\n"
+          ]
 
  CanaryAutoScalingGroup:
   Type: "AWS::AutoScaling::AutoScalingGroup"
@@ -390,9 +388,9 @@ Resources:
          "",
          [
            "#!/bin/bash -ex\n",
-           "yum update -y aws-cfn-bootstrap\n",
+           "/usr/bin/yum update -y aws-cfn-bootstrap\n",
            "# Update the AWS CLI to the latest version\n",
-           "yum install -y aws-cli\n",
+           "/usr/bin/yum install -y aws-cli\n",
            "function error_exit\n",
            "{\n",
            "  /opt/aws/bin/cfn-signal -e 1 -r \"$1\" '",
@@ -414,30 +412,30 @@ Resources:
            "# Install Maven\n",
            "cd /tmp/\n",
            "MAVEN_VERSION=3.3.9\n",
-           "wget https://archive.apache.org/dist/maven/maven-3/$MAVEN_VERSION/binaries/apache-maven-$MAVEN_VERSION-bin.tar.gz\n",
-           "tar xzvf apache-maven-$MAVEN_VERSION-bin.tar.gz -C /opt/\n",
-           "ln -s /opt/apache-maven-$MAVEN_VERSION /opt/apache-maven\n",
-           "rm /tmp/apache-maven-$MAVEN_VERSION-bin.tar.gz\n",
+           "/usr/bin/wget https://archive.apache.org/dist/maven/maven-3/$MAVEN_VERSION/binaries/apache-maven-$MAVEN_VERSION-bin.tar.gz\n",
+           "/bin/tar xzvf apache-maven-$MAVEN_VERSION-bin.tar.gz -C /opt/\n",
+           "/bin/ln -s /opt/apache-maven-$MAVEN_VERSION /opt/apache-maven\n",
+           "/bin/rm /tmp/apache-maven-$MAVEN_VERSION-bin.tar.gz\n",
            "# Install Jenkins\n",
-           "wget -O /etc/yum.repos.d/jenkins.repo http://pkg.jenkins-ci.org/redhat/jenkins.repo\n",
-           "rpm --import http://pkg.jenkins-ci.org/redhat/jenkins-ci.org.key\n",
-           "yum install -y http://pkg.jenkins-ci.org/redhat/jenkins-1.658-1.1.noarch.rpm\n",
-           "service jenkins start\n",
-           "chkconfig jenkins on\n",
+           "/usr/bin/wget -O /etc/yum.repos.d/jenkins.repo http://pkg.jenkins-ci.org/redhat/jenkins.repo\n",
+           "/bin/rpm --import http://pkg.jenkins-ci.org/redhat/jenkins-ci.org.key\n",
+           "/usr/bin/yum install -y http://pkg.jenkins-ci.org/redhat/jenkins-1.658-1.1.noarch.rpm\n",
+           "/sbin/service jenkins start\n",
+           "/sbin/chkconfig jenkins on\n",
            "# Wait 30 seconds to allow Jenkins to startup\n",
-           "echo \"Waiting 30 seconds for Jenkins to start.....\"\n",
-           "sleep 30\n",
+           "/bin/echo \"Waiting 30 seconds for Jenkins to start.....\"\n",
+           "/bin/sleep 30\n",
            "# Install the required plugins\n",
            "cd /var/lib/jenkins/plugins\n",
-           "curl -O -L https://updates.jenkins-ci.org/latest/aws-codepipeline.hpi\n",
-           "chown jenkins:jenkins *.hpi\n",
-           "mv /tmp/hudson.tasks.Maven.xml /var/lib/jenkins/\n",
-           "mv /tmp/jenkins.mvn.GlobalMavenConfig.xml /var/lib/jenkins/\n",
-           "chown jenkins:jenkins /var/lib/jenkins/*.xml\n",
+           "/usr/bin/curl -O -L https://updates.jenkins-ci.org/latest/aws-codepipeline.hpi\n",
+           "/bin/chown jenkins:jenkins *.hpi\n",
+           "/bin/mv /tmp/hudson.tasks.Maven.xml /var/lib/jenkins/\n",
+           "/bin/mv /tmp/jenkins.mvn.GlobalMavenConfig.xml /var/lib/jenkins/\n",
+           "/bin/chown jenkins:jenkins /var/lib/jenkins/*.xml\n",
            "# Restarting Jenkins\n",
-           "service jenkins restart\n",
-           "echo \"Waiting 30 seconds for Jenkins to start.....\"\n",
-           "sleep 30\n",
+           "/sbin/service jenkins restart\n",
+           "/bin/echo \"Waiting 30 seconds for Jenkins to start.....\"\n",
+           "/bin/sleep 30\n",
            "# configure our job\n",
            "/bin/sed -i \"s/APPNAME/",
            {
@@ -454,10 +452,10 @@ Resources:
              "Ref": "AppName"
            },
            "< /tmp/config.xml\n",
-           "rm /tmp/config.xml\n",
+           "/bin/rm /tmp/config.xml\n",
            "# Set up port forwarding\n",
-           "iptables -A PREROUTING -t nat -i eth0 -p tcp --dport 80 -j REDIRECT --to-port 8080\n",
-           "iptables-save > /etc/sysconfig/iptables\n",
+           "/sbin/iptables -A PREROUTING -t nat -i eth0 -p tcp --dport 80 -j REDIRECT --to-port 8080\n",
+           "/sbin/iptables-save > /etc/sysconfig/iptables\n",
            "# If all went well, signal success\n",
            "/opt/aws/bin/cfn-signal -e $? -r 'Instance configuration complete' '",
            {
@@ -604,9 +602,9 @@ Resources:
     MinimumCount: 0
    Settings:
     EntityUrlTemplate:
-      "Fn::Join": [ "", [ "http://", { "Fn::GetAtt": [ "JenkinsServer", "PublicIp" ] }, "/job/{Config:ProjectName}" ] ]
+      "Fn::Join": [ "", [ "http://", { "Fn::GetAtt": [ "JenkinsServer", "PublicIp" ] }, "/job/{Config:ProjectName}" ]]
     ExecutionUrlTemplate:
-      "Fn::Join": [ "", [ "http://", { "Fn::GetAtt": [ "JenkinsServer", "PublicIp" ] }, "/job/{Config:ProjectName}/{ExternalExecutionId}" ] ]
+      "Fn::Join": [ "", [ "http://", { "Fn::GetAtt": [ "JenkinsServer", "PublicIp" ] }, "/job/{Config:ProjectName}/{ExternalExecutionId}" ]]
 
  Pipeline:
   Type: "AWS::CodePipeline::Pipeline"
